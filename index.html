@@ -89,6 +89,7 @@
         
         #btn-shoot { bottom: 60px; right: 40px; width: 80px; height: 80px; background: red; border-radius: 50%; border: 3px solid white; }
         #btn-scope { bottom: 160px; right: 50px; width: 60px; height: 60px; background: rgba(0,0,0,0.5); border-radius: 50%; border: 2px solid white; color: white; display: flex; justify-content: center; align-items: center; font-size: 12px; }
+        
         #btn-reload { bottom: 60px; right: 140px; width: 50px; height: 50px; background: orange; border-radius: 50%; border: 2px solid white; color: black; font-weight: bold; display: flex; justify-content: center; align-items: center; font-size: 20px; }
         #btn-heal { bottom: 130px; right: 140px; width: 50px; height: 50px; background: green; border-radius: 50%; border: 2px solid white; color: white; font-weight: bold; display: flex; justify-content: center; align-items: center; font-size: 20px; }
 
@@ -151,7 +152,7 @@
         <h1 style="color:white; font-size:50px; margin:0;">WAR ZONE</h1>
         <h2 style="color:orange; margin:0;">FINAL EDITION</h2>
         <button id="start-btn">DEPLOY</button>
-        <div style="color:yellow; margin-top:10px" id="loader">Loading...</div>
+        <div style="color:yellow; margin-top:10px" id="loader">Loading Environment...</div>
     </div>
 
     <script type="module">
@@ -229,15 +230,18 @@
             camera.add(listener);
             const loader = new THREE.AudioLoader();
             
-            // --- FIX 1: LOAD SOUNDS WITH EXACT GITHUB NAMES ---
+            // --- FIX 1: EXACT FILE NAMES ---
             bgm = new THREE.Audio(listener);
             loader.load('bg.mp3', (b) => { bgm.setBuffer(b); bgm.setLoop(true); bgm.setVolume(0.3); });
             vicMusic = new THREE.Audio(listener);
             loader.load('victory.mp3', (b) => { vicMusic.setBuffer(b); vicMusic.setVolume(1.0); });
             sfxShoot = new THREE.Audio(listener);
-            loader.load('Shoot.mp3', (b) => { sfxShoot.setBuffer(b); sfxShoot.setVolume(0.4); }); // CAPITAL S
+            loader.load('Shoot.mp3', (b) => { sfxShoot.setBuffer(b); sfxShoot.setVolume(0.4); }); // Capital S
             sfxHit = new THREE.Audio(listener);
-            loader.load('Hit.mp3', (b) => { sfxHit.setBuffer(b); sfxHit.setVolume(0.6); }); // CAPITAL H
+            loader.load('hit.mp3', (b) => { sfxHit.setBuffer(b); sfxHit.setVolume(0.6); }, undefined, () => {
+                // Try Fallback in case of case mismatch
+                loader.load('Hit.mp3', (b) => { sfxHit.setBuffer(b); sfxHit.setVolume(0.6); });
+            }); 
 
             renderer = new THREE.WebGLRenderer({antialias:true});
             renderer.setSize(window.innerWidth, window.innerHeight);
@@ -295,8 +299,8 @@
 
                     txt.innerText = "Loading Enemies...";
                     texLoader.load('enemy_color.png', (tex) => {
-                        // --- FIX 2: LOAD ENEMY WITH EXACT GITHUB NAME ---
-                        fbx.load('enemy.FBX', (eModel) => { // CAPITAL FBX
+                        // --- FIX 2: EXACT ENEMY NAME ---
+                        fbx.load('enemy.FBX', (eModel) => { // Capital FBX
                             txt.innerText = "READY!";
                             eModel.traverse(c => { if(c.isMesh) c.material = new THREE.MeshStandardMaterial({map: tex}); });
                             enemyTemplate = eModel;
@@ -423,9 +427,9 @@
                 
                 stick.style.transform = `translate(calc(-50% + ${fx}px), calc(-50% + ${fy}px))`;
                 
-                // INVERTED LOGIC AS PER REQUEST
-                move.right = -(fx/max); // Left is Right
-                move.fwd = (fy/max);    // Back is Forward
+                // JOYSTICK DIRECTION FIX (Inverted)
+                move.right = (fx/max); 
+                move.fwd = -(fy/max);  // Up should be forward (negative Z)
             });
             joyZone.addEventListener('touchend', () => { stick.style.transform = `translate(-50%, -50%)`; move.fwd=0; move.right=0; });
 
@@ -554,7 +558,6 @@
                 lastShot = clock.getElapsedTime();
             }
 
-            // PC Controls
             if(controls.isLocked) {
                 const camDir = new THREE.Vector3();
                 camera.getWorldDirection(camDir);
@@ -566,52 +569,13 @@
             player.translateZ(-move.fwd * dist);
             player.translateX(move.right * dist);
 
-            // Camera Follow Logic (Adapted for Mobile Look)
             const targetPos = player.position.clone();
             targetPos.y += CONFIG.camHeight;
-            
-            // If on mobile (or unlocked), use camera's current rotation
-            // If on PC (locked), pointerlock handles it
-            
-            const backDir = new THREE.Vector3(0, 0, 1); // Start facing back
-            // Apply camera rotation to the offset
-            backDir.applyEuler(camera.rotation); 
-            backDir.normalize();
+            const backDir = new THREE.Vector3();
+            camera.getWorldDirection(backDir);
+            backDir.negate();
             backDir.multiplyScalar(isScoped ? 2.0 : CONFIG.camDist);
-            
-            // If locked (PC), we recalculate position standard way
-            if(controls.isLocked) {
-                 const bd = new THREE.Vector3();
-                 camera.getWorldDirection(bd);
-                 bd.negate().multiplyScalar(isScoped ? 2.0 : CONFIG.camDist);
-                 camera.position.copy(targetPos).add(bd);
-            } else {
-                // Mobile: Camera position is relative to player but rotated by touch
-                // Actually simpler: Just orbit camera
-                // Let's stick to the previous working follow logic but allow pitch adjustment
-                
-                // Re-calculate back vector based on player Y rotation + manual pitch
-                const pitch = camera.rotation.x;
-                const yaw = player.rotation.y;
-                
-                const offX = Math.sin(yaw) * CONFIG.camDist * Math.cos(pitch);
-                const offZ = Math.cos(yaw) * CONFIG.camDist * Math.cos(pitch);
-                const offY = Math.sin(pitch) * CONFIG.camDist; 
-                
-                // This is getting complex for simple fix. 
-                // Let's revert to standard follow and just use lookAt with offset
-                
-                // Standard Follow
-                const stdOffset = new THREE.Vector3(0, 0, isScoped?2:CONFIG.camDist);
-                stdOffset.applyAxisAngle(new THREE.Vector3(0,1,0), player.rotation.y);
-                camera.position.copy(player.position).add(new THREE.Vector3(0, CONFIG.camHeight, 0)).add(stdOffset);
-                
-                // Look At Logic (with Pitch)
-                const lookTarget = player.position.clone().add(new THREE.Vector3(0, CONFIG.camHeight, 0));
-                // Add pitch offset
-                lookTarget.y -= Math.tan(camera.rotation.x) * 10; 
-                camera.lookAt(lookTarget);
-            }
+            camera.position.copy(targetPos).add(backDir);
 
             camera.fov = THREE.MathUtils.lerp(camera.fov, isScoped ? 15 : 70, 0.2);
             camera.updateProjectionMatrix();
