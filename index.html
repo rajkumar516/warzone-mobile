@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>War Zone Mobile - Final</title>
+    <title>War Zone Mobile - Final Fixed</title>
     <style>
         body { margin: 0; overflow: hidden; background: #87CEEB; font-family: Impact, sans-serif; user-select: none; touch-action: none; }
         
@@ -89,8 +89,6 @@
         
         #btn-shoot { bottom: 60px; right: 40px; width: 80px; height: 80px; background: red; border-radius: 50%; border: 3px solid white; }
         #btn-scope { bottom: 160px; right: 50px; width: 60px; height: 60px; background: rgba(0,0,0,0.5); border-radius: 50%; border: 2px solid white; color: white; display: flex; justify-content: center; align-items: center; font-size: 12px; }
-        
-        /* NEW BUTTONS FOR MOBILE */
         #btn-reload { bottom: 60px; right: 140px; width: 50px; height: 50px; background: orange; border-radius: 50%; border: 2px solid white; color: black; font-weight: bold; display: flex; justify-content: center; align-items: center; font-size: 20px; }
         #btn-heal { bottom: 130px; right: 140px; width: 50px; height: 50px; background: green; border-radius: 50%; border: 2px solid white; color: white; font-weight: bold; display: flex; justify-content: center; align-items: center; font-size: 20px; }
 
@@ -153,15 +151,13 @@
         <h1 style="color:white; font-size:50px; margin:0;">WAR ZONE</h1>
         <h2 style="color:orange; margin:0;">FINAL EDITION</h2>
         <button id="start-btn">DEPLOY</button>
-        <div style="color:yellow; margin-top:10px" id="loader">Loading Environment...</div>
+        <div style="color:yellow; margin-top:10px" id="loader">Loading...</div>
     </div>
 
     <script type="module">
         import * as THREE from 'three';
         import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
         import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
-        
-        // NO TGA LOADER NEEDED - USING PNG
 
         const CONFIG = {
             speed: 50,
@@ -209,21 +205,39 @@
             dir.castShadow = true;
             scene.add(dir);
 
-            createNature();
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(1000, 1000), new THREE.MeshStandardMaterial({color: 0x33aa33}));
+            floor.rotation.x = -Math.PI/2;
+            scene.add(floor);
+
+            // Trees
+            const tG = new THREE.CylinderGeometry(0.5,0.5,3);
+            const tM = new THREE.MeshStandardMaterial({color:0x8B4513});
+            const lG = new THREE.ConeGeometry(3,6,8);
+            const lM = new THREE.MeshStandardMaterial({color:0x006400});
+            for(let i=0; i<60; i++){
+                const t = new THREE.Group();
+                const tr = new THREE.Mesh(tG,tM); tr.position.y=1.5;
+                const lv = new THREE.Mesh(lG,lM); lv.position.y=5;
+                t.add(tr); t.add(lv);
+                const x=(Math.random()-0.5)*400; const z=(Math.random()-0.5)*400;
+                if(Math.abs(x)>30||Math.abs(z)>30){ t.position.set(x,0,z); scene.add(t); }
+            }
 
             camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 1000);
             
             listener = new THREE.AudioListener();
             camera.add(listener);
             const loader = new THREE.AudioLoader();
+            
+            // --- FIX 1: LOAD SOUNDS WITH EXACT GITHUB NAMES ---
             bgm = new THREE.Audio(listener);
             loader.load('bg.mp3', (b) => { bgm.setBuffer(b); bgm.setLoop(true); bgm.setVolume(0.3); });
             vicMusic = new THREE.Audio(listener);
             loader.load('victory.mp3', (b) => { vicMusic.setBuffer(b); vicMusic.setVolume(1.0); });
             sfxShoot = new THREE.Audio(listener);
-            loader.load('shoot.mp3', (b) => { sfxShoot.setBuffer(b); sfxShoot.setVolume(0.4); });
+            loader.load('Shoot.mp3', (b) => { sfxShoot.setBuffer(b); sfxShoot.setVolume(0.4); }); // CAPITAL S
             sfxHit = new THREE.Audio(listener);
-            loader.load('hit.mp3', (b) => { sfxHit.setBuffer(b); sfxHit.setVolume(0.6); });
+            loader.load('Hit.mp3', (b) => { sfxHit.setBuffer(b); sfxHit.setVolume(0.6); }); // CAPITAL H
 
             renderer = new THREE.WebGLRenderer({antialias:true});
             renderer.setSize(window.innerWidth, window.innerHeight);
@@ -235,16 +249,13 @@
             loadAssets();
             setupInputs();
 
-            const soundBtn = document.getElementById('sound-toggle');
-            soundBtn.addEventListener('click', () => {
+            document.getElementById('sound-toggle').addEventListener('click', () => {
                 isMuted = !isMuted;
                 listener.setMasterVolume(isMuted ? 0 : 1);
-                soundBtn.innerText = isMuted ? '🔇' : '🔊';
+                document.getElementById('sound-toggle').innerText = isMuted ? '🔇' : '🔊';
             });
 
-            document.querySelectorAll('.btn-restart').forEach(btn => {
-                btn.addEventListener('click', resetGame);
-            });
+            document.querySelectorAll('.btn-restart').forEach(btn => btn.addEventListener('click', resetGame));
 
             window.addEventListener('resize', () => {
                 camera.aspect = window.innerWidth/window.innerHeight;
@@ -253,40 +264,9 @@
             });
         }
 
-        function createNature() {
-            const floorGeo = new THREE.PlaneGeometry(1000, 1000);
-            const floorMat = new THREE.MeshStandardMaterial({ color: 0x33aa33, roughness: 1 });
-            const floor = new THREE.Mesh(floorGeo, floorMat);
-            floor.rotation.x = -Math.PI/2;
-            scene.add(floor);
-
-            const trunkGeo = new THREE.CylinderGeometry(0.5, 0.5, 3);
-            const trunkMat = new THREE.MeshStandardMaterial({color: 0x8B4513});
-            const leaveGeo = new THREE.ConeGeometry(3, 6, 8);
-            const leaveMat = new THREE.MeshStandardMaterial({color: 0x006400});
-
-            for(let i=0; i<60; i++) {
-                const tree = new THREE.Group();
-                const trunk = new THREE.Mesh(trunkGeo, trunkMat);
-                trunk.position.y = 1.5;
-                const leaves = new THREE.Mesh(leaveGeo, leaveMat);
-                leaves.position.y = 5;
-                tree.add(trunk);
-                tree.add(leaves);
-                const x = (Math.random()-0.5)*400;
-                const z = (Math.random()-0.5)*400;
-                if(Math.abs(x) > 30 || Math.abs(z) > 30) {
-                    tree.position.set(x, 0, z);
-                    const scale = 1 + Math.random();
-                    tree.scale.set(scale, scale, scale);
-                    scene.add(tree);
-                }
-            }
-        }
-
         function loadAssets() {
             const fbx = new FBXLoader();
-            const texLoader = new THREE.TextureLoader(); // USING STANDARD TEXTURE LOADER
+            const texLoader = new THREE.TextureLoader();
             const txt = document.getElementById('loader');
 
             fbx.load('player.fbx', (obj) => {
@@ -314,17 +294,15 @@
                     gun.add(muzzleFlash);
 
                     txt.innerText = "Loading Enemies...";
-                    // LOAD PNG INSTEAD OF TGA
                     texLoader.load('enemy_color.png', (tex) => {
-                        fbx.load('enemy.fbx', (eModel) => {
+                        // --- FIX 2: LOAD ENEMY WITH EXACT GITHUB NAME ---
+                        fbx.load('enemy.FBX', (eModel) => { // CAPITAL FBX
                             txt.innerText = "READY!";
                             eModel.traverse(c => { if(c.isMesh) c.material = new THREE.MeshStandardMaterial({map: tex}); });
                             enemyTemplate = eModel;
                             spawnEnemies();
                         });
-                    }, () => {
-                        txt.innerText = "Skin Failed (No Spawn)";
-                    });
+                    }, () => { txt.innerText = "Skin Failed"; });
                 });
             });
         }
@@ -335,17 +313,13 @@
                 let e = enemyTemplate.clone();
                 e.scale.set(0.012, 0.012, 0.012);
                 e.rotation.x = -Math.PI/2;
-                
                 let x = (Math.random()-0.5)*300;
                 let z = (Math.random()-0.5)*300;
-                if(Math.abs(x)<50) x+=60;
-                if(Math.abs(z)<50) z+=60;
-
+                if(Math.abs(x)<50) x+=60; if(Math.abs(z)<50) z+=60;
                 e.position.set(x, 0, z);
                 e.userData.hp = 3;
                 scene.add(e);
                 enemies.push(e);
-
                 const dot = document.createElement('div');
                 dot.className = 'map-dot enemy-dot';
                 document.getElementById('minimap').appendChild(dot);
@@ -358,14 +332,12 @@
             enemies = [];
             kills = 0; health = 100; ammo = 150;
             gameActive = true;
-            
             document.getElementById('victory-screen').style.display = 'none';
             document.getElementById('death-screen').style.display = 'none';
             document.getElementById('hud-kills').innerText = `KILLS: 0 / ${CONFIG.totalEnemies}`;
             document.getElementById('hud-health').innerText = `HP: 100`;
             document.getElementById('hud-health').style.color = "#33ff33";
             document.getElementById('hud-ammo').innerText = `150`;
-            
             spawnEnemies();
             if(vicMusic.isPlaying) vicMusic.stop();
             if(bgm.buffer && !bgm.isPlaying) bgm.play();
@@ -432,10 +404,11 @@
                 if(e.button==2) toggleScope(false);
             });
 
-            // Android Controls
+            // --- FIX 3: JOYSTICK DIRECTION & TOUCH LOOK ---
             const joyZone = document.getElementById('joystick-zone');
             const stick = document.getElementById('joystick-stick');
             let jStartX=0, jStartY=0;
+            
             joyZone.addEventListener('touchstart', (e) => { jStartX = e.touches[0].clientX; jStartY = e.touches[0].clientY; });
             joyZone.addEventListener('touchmove', (e) => {
                 const dx = e.touches[0].clientX - jStartX;
@@ -444,27 +417,47 @@
                 const dist = Math.sqrt(dx*dx+dy*dy);
                 const clamped = Math.min(dist, max);
                 const ang = Math.atan2(dy, dx);
+                
                 const fx = Math.cos(ang) * clamped;
                 const fy = Math.sin(ang) * clamped;
+                
                 stick.style.transform = `translate(calc(-50% + ${fx}px), calc(-50% + ${fy}px))`;
-                move.right = fx/max; move.fwd = -(fy/max);
+                
+                // INVERTED LOGIC AS PER REQUEST
+                move.right = -(fx/max); // Left is Right
+                move.fwd = (fy/max);    // Back is Forward
             });
             joyZone.addEventListener('touchend', () => { stick.style.transform = `translate(-50%, -50%)`; move.fwd=0; move.right=0; });
 
             document.getElementById('btn-shoot').addEventListener('touchstart', (e)=>{e.preventDefault(); isFiring=true;});
             document.getElementById('btn-shoot').addEventListener('touchend', (e)=>{e.preventDefault(); isFiring=false;});
             document.getElementById('btn-scope').addEventListener('touchstart', (e)=>{e.preventDefault(); toggleScope(!isScoped);});
-            
-            // NEW MOBILE BUTTONS
             document.getElementById('btn-reload').addEventListener('touchstart', (e)=>{e.preventDefault(); reload();});
             document.getElementById('btn-heal').addEventListener('touchstart', (e)=>{e.preventDefault(); heal();});
 
-            let touchX=0;
-            document.addEventListener('touchstart', (e)=> { if(e.touches[0].clientX > window.innerWidth/2) touchX = e.touches[0].clientX; });
+            // 360 TOUCH LOOK
+            let touchX=0, touchY=0;
+            document.addEventListener('touchstart', (e)=> { 
+                if(e.touches[0].clientX > window.innerWidth/2) {
+                    touchX = e.touches[0].clientX;
+                    touchY = e.touches[0].clientY;
+                }
+            });
             document.addEventListener('touchmove', (e)=> {
                 if(e.touches[0].clientX > window.innerWidth/2 && !isScoped) {
-                    player.rotation.y -= (e.touches[0].clientX - touchX) * 0.005;
+                    const dX = e.touches[0].clientX - touchX;
+                    const dY = e.touches[0].clientY - touchY;
+                    
+                    // Rotate Player (Left/Right)
+                    player.rotation.y -= dX * 0.005;
+                    
+                    // Rotate Camera (Up/Down) - Manually adjust pitch
+                    camera.rotation.x -= dY * 0.002;
+                    // Clamp looking up/down
+                    camera.rotation.x = Math.max(-1.0, Math.min(1.0, camera.rotation.x));
+
                     touchX = e.touches[0].clientX;
+                    touchY = e.touches[0].clientY;
                 }
             });
         }
@@ -561,6 +554,7 @@
                 lastShot = clock.getElapsedTime();
             }
 
+            // PC Controls
             if(controls.isLocked) {
                 const camDir = new THREE.Vector3();
                 camera.getWorldDirection(camDir);
@@ -572,13 +566,52 @@
             player.translateZ(-move.fwd * dist);
             player.translateX(move.right * dist);
 
+            // Camera Follow Logic (Adapted for Mobile Look)
             const targetPos = player.position.clone();
             targetPos.y += CONFIG.camHeight;
-            const backDir = new THREE.Vector3();
-            camera.getWorldDirection(backDir);
-            backDir.negate();
+            
+            // If on mobile (or unlocked), use camera's current rotation
+            // If on PC (locked), pointerlock handles it
+            
+            const backDir = new THREE.Vector3(0, 0, 1); // Start facing back
+            // Apply camera rotation to the offset
+            backDir.applyEuler(camera.rotation); 
+            backDir.normalize();
             backDir.multiplyScalar(isScoped ? 2.0 : CONFIG.camDist);
-            camera.position.copy(targetPos).add(backDir);
+            
+            // If locked (PC), we recalculate position standard way
+            if(controls.isLocked) {
+                 const bd = new THREE.Vector3();
+                 camera.getWorldDirection(bd);
+                 bd.negate().multiplyScalar(isScoped ? 2.0 : CONFIG.camDist);
+                 camera.position.copy(targetPos).add(bd);
+            } else {
+                // Mobile: Camera position is relative to player but rotated by touch
+                // Actually simpler: Just orbit camera
+                // Let's stick to the previous working follow logic but allow pitch adjustment
+                
+                // Re-calculate back vector based on player Y rotation + manual pitch
+                const pitch = camera.rotation.x;
+                const yaw = player.rotation.y;
+                
+                const offX = Math.sin(yaw) * CONFIG.camDist * Math.cos(pitch);
+                const offZ = Math.cos(yaw) * CONFIG.camDist * Math.cos(pitch);
+                const offY = Math.sin(pitch) * CONFIG.camDist; 
+                
+                // This is getting complex for simple fix. 
+                // Let's revert to standard follow and just use lookAt with offset
+                
+                // Standard Follow
+                const stdOffset = new THREE.Vector3(0, 0, isScoped?2:CONFIG.camDist);
+                stdOffset.applyAxisAngle(new THREE.Vector3(0,1,0), player.rotation.y);
+                camera.position.copy(player.position).add(new THREE.Vector3(0, CONFIG.camHeight, 0)).add(stdOffset);
+                
+                // Look At Logic (with Pitch)
+                const lookTarget = player.position.clone().add(new THREE.Vector3(0, CONFIG.camHeight, 0));
+                // Add pitch offset
+                lookTarget.y -= Math.tan(camera.rotation.x) * 10; 
+                camera.lookAt(lookTarget);
+            }
 
             camera.fov = THREE.MathUtils.lerp(camera.fov, isScoped ? 15 : 70, 0.2);
             camera.updateProjectionMatrix();
