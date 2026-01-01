@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>War Zone Mobile - Final Fixed</title>
+    <title>War Zone Mobile - Rapid Fire</title>
     <style>
         body { margin: 0; overflow: hidden; background: #87CEEB; font-family: Impact, sans-serif; user-select: none; touch-action: none; }
         
@@ -11,44 +11,31 @@
         
         /* CROSSHAIR */
         #crosshair {
-            position: absolute; top: 50%; left: 50%;
-            width: 4px; height: 4px;
-            background: #0f0; border-radius: 50%;
-            transform: translate(-50%, -50%);
-            box-shadow: 0 0 4px #0f0;
-            z-index: 20;
+            position: absolute; top: 50%; left: 50%; width: 4px; height: 4px;
+            background: #0f0; border-radius: 50%; transform: translate(-50%, -50%);
+            box-shadow: 0 0 4px #0f0; z-index: 20;
         }
 
         /* SCOPE */
         #scope-overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            display: none; z-index: 15;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; z-index: 15;
             background-image: 
                 linear-gradient(to bottom, transparent 49.9%, black 49.9%, black 50.1%, transparent 50.1%),
                 linear-gradient(to right, transparent 49.9%, black 49.9%, black 50.1%, transparent 50.1%),
                 radial-gradient(circle closest-side, transparent 25%, black 25.5%, black 27%, transparent 27.5%),
                 radial-gradient(circle closest-side, transparent 45%, black 95%);
-            background-size: 100% 100%;
-            background-repeat: no-repeat;
-            background-position: center;
+            background-size: 100% 100%; background-repeat: no-repeat; background-position: center;
         }
 
         /* MINIMAP */
         #minimap {
-            position: absolute; top: 20px; right: 20px;
-            width: 150px; height: 150px;
-            background: rgba(0, 0, 0, 0.5);
-            border: 2px solid white;
-            border-radius: 5px;
-            overflow: hidden;
-            z-index: 50;
+            position: absolute; top: 20px; right: 20px; width: 150px; height: 150px;
+            background: rgba(0, 0, 0, 0.5); border: 2px solid white; border-radius: 5px; overflow: hidden; z-index: 50;
         }
         .map-dot { position: absolute; width: 8px; height: 8px; border-radius: 50%; transform: translate(-50%, -50%); }
         #player-arrow { 
-            position: absolute; top: 50%; left: 50%; z-index: 2; 
-            width: 0; height: 0; 
-            border-left: 6px solid transparent; border-right: 6px solid transparent;
-            border-bottom: 12px solid #00ff00;
+            position: absolute; top: 50%; left: 50%; z-index: 2; width: 0; height: 0; 
+            border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 12px solid #00ff00;
             transform-origin: center center; transform: translate(-50%, -50%);
         }
         .enemy-dot { background: red; z-index: 1; border: 1px solid white; }
@@ -224,7 +211,7 @@
             gunScale: 0.008,
             gunOffset: { x: 0.35, y: 1.4, z: 0.6 },
             gunRot: { x: 0, y: -Math.PI/2, z: 0 },
-            fireRate: 0.08,  // AKM Speed
+            fireRate: 0.10,  // AKM Speed
             mapScale: 4.0,
             damageCooldown: 1.0,
             attackRange: 40 
@@ -617,7 +604,11 @@
             ammo--;
             document.getElementById('hud-ammo').innerText = ammo;
             
-            if(sfxEnabled && sfxShoot.buffer && !sfxShoot.isPlaying) { sfxShoot.stop(); sfxShoot.play(); }
+            // --- SOUND FIX (INSTANT RESTART) ---
+            if(sfxEnabled && sfxShoot.buffer) {
+                if(sfxShoot.isPlaying) sfxShoot.stop(); // Stop OLD
+                sfxShoot.play(); // Play NEW
+            }
 
             if(muzzleFlash) {
                 muzzleFlash.visible = true;
@@ -633,7 +624,10 @@
                 let obj = hits[0].object;
                 while(obj.parent && obj.parent !== scene) obj = obj.parent;
                 
-                if(sfxEnabled && sfxHit.buffer) { sfxHit.stop(); sfxHit.play(); }
+                if(sfxEnabled && sfxHit.buffer) { 
+                    if(sfxHit.isPlaying) sfxHit.stop(); // Sound fix for hit too
+                    sfxHit.play(); 
+                }
                 
                 obj.userData.hp -= 1;
                 if(obj.userData.hp <= 0) {
